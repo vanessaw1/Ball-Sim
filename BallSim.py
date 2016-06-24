@@ -13,7 +13,7 @@ class GUI(Frame):
         # Begin Constants
         self.DT = 0.075  # In seconds - Affects smoothness (0.075)
         self.UPDATETIME = 400  # In milliseconds - Affects animation speed (400)
-        self.BALLLIMIT = 20
+        self.BALLLIMIT = 25
         self.G = 10
         # End Constants
 
@@ -42,7 +42,7 @@ class GUI(Frame):
         # Ball Radius - Label + Scale
         self.radius_desc = Label(self, text="Set Next Ball Radius:").grid(row=5, column=1)
         self.radius = Scale(self, from_=1, to_=50)
-        self.radius.set(20)
+        self.radius.set(25)  # Default radius on start
         self.radius.grid(row=5, column=2)
 
         # Set Gravity - Label + Radio Buttons
@@ -64,12 +64,12 @@ class GUI(Frame):
         self.count = Label(self, textvariable=self.countVar, bg="WHITE").grid(row=0, column=0)
 
     def clearCanvas(self):
-        print("Clearing screen...")
+        #print("Clearing screen...")
         for ball in self.ballStack:
             ball.deleteBall()
         self.ballStack = deque([])
         self.updateBallCount()
-        print("Cleared!")
+        #print("Cleared!")
 
     def createBall(self, event):
         self.ballStack.append(ball(self.sim, event, self.radius.get(), self.DT, self.gravityVar.get(), self.colorVar.get(), self.UPDATETIME))
@@ -116,7 +116,7 @@ class ball():
         #print("Ball's position:", event.x, event.y)
         self.ballDrawing = canvas.create_oval(self.x-r, self.y-r, self.x+r, self.y+r, outline=color, fill=color)
         self.animation(self.dt)
-        print("Ball Placed:", self.ballDrawing)
+        #print("Ball Placed:", self.ballDrawing)
 
     def animation(self, dt):
         self.dt = dt
@@ -143,7 +143,7 @@ class ball():
 
     def deleteBall(self):
         self.canvas.delete(self.ballDrawing)
-        print("Deleted ball", self.ballDrawing)
+        #print("Deleted ball", self.ballDrawing)
 
 root = Tk()
 root.title("Ball Simulator")
