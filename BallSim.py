@@ -15,6 +15,8 @@ class GUI(Frame):
         self.UPDATETIME = 400  # In milliseconds - Affects animation speed (400)
         self.BALLLIMIT = 25
         self.G = 10
+        self.CWIDTH = 1300
+        self.CHEIGHT = 1000
         # End Constants
 
         self.pack()
@@ -22,7 +24,7 @@ class GUI(Frame):
 
     def createWigets(self):
         # Simulation - Canvas
-        self.sim = Canvas(self, width=1300, height=1000, bg="WHITE")
+        self.sim = Canvas(self, width=self.CWIDTH, height=self.CHEIGHT, bg="WHITE")
         self.sim.grid(row=0, column=0, rowspan=10)
         self.sim.bind("<Button-1>", self.createBall)  # On clicking the mouse
 
@@ -72,10 +74,11 @@ class GUI(Frame):
         #print("Cleared!")
 
     def createBall(self, event):
-        self.ballStack.append(ball(self.sim, event, self.radius.get(), self.DT, self.gravityVar.get(), self.colorVar.get(), self.UPDATETIME))
-        if len(self.ballStack) > self.BALLLIMIT:
-            self.ballStack.popleft().deleteBall()
-        self.updateBallCount()
+        if self.radius.get() < event.x < self.CWIDTH - self.radius.get() and self.radius.get() < event.y < self.CHEIGHT - self.radius.get():
+            self.ballStack.append(ball(self.sim, event, self.radius.get(), self.DT, self.gravityVar.get(), self.colorVar.get(), self.UPDATETIME))
+            if len(self.ballStack) > self.BALLLIMIT:
+                self.ballStack.popleft().deleteBall()
+            self.updateBallCount()
 
     def removeBall(self):
         if len(self.ballStack) == 0:
