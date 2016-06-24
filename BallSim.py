@@ -1,5 +1,6 @@
 from tkinter import *
 from collections import deque
+from random import randint
 
 class GUI(Frame):
     def __init__(self, master=None):
@@ -95,8 +96,14 @@ class ball():
         self.x = event.x
         self.y = event.y
         self.canvas = canvas
-        self.speedX = 5
-        self.speedY = 0
+        if randint(0, 1) == 0:
+            self.speedX = 5
+        else:
+            self.speedX = -5
+        if randint(0, 1) == 0:
+            self.speedY = -5
+        else:
+            self.speedY = 5
         self.floor = 1000
         self.ceiling = 0
         self.lwall = 0
