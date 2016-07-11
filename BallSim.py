@@ -1,32 +1,31 @@
 from tkinter import *
 from collections import deque
-from random import randint
+import math
 
 class GUI(Frame):
     def __init__(self, master=None):
         Frame.__init__(self, master)
-        master.minsize(width=1920, height=1080)
-        master.maxsize(width=1920, height=1080)
+        master.state("zoomed")
         self.ballStack = deque([])
         self.countVar = StringVar()
 
         # Begin Constants
-        self.DT = 0.075  # In seconds - Affects smoothness (0.075)
-        self.UPDATETIME = 400  # In milliseconds - Affects animation speed (400)
+        self.DT = 0.1
         self.BALLLIMIT = 25
-        self.G = 10
-        self.CWIDTH = 1300
-        self.CHEIGHT = 1000
+        self.G = 1
+        self.WIDTH = 1600
+        self.HEIGHT = 1000
         # End Constants
 
         self.pack()
         self.createWigets()
+        self.moveBalls()
 
     def createWigets(self):
         # Simulation - Canvas
-        self.sim = Canvas(self, width=self.CWIDTH, height=self.CHEIGHT, bg="WHITE")
-        self.sim.grid(row=0, column=0, rowspan=10)
-        self.sim.bind("<Button-1>", self.createBall)  # On clicking the mouse
+        self.canvas = Canvas(self, width=self.WIDTH, height=self.HEIGHT, bg="WHITE")
+        self.canvas.grid(row=0, column=0, rowspan=10)
+        self.canvas.bind("<Button-1>", self.createBall)  # On clicking the mouse
 
         # Color Chooser - Label + Radio Buttons
         self.color = Label(self, text="Set Next Ball Color:").grid(row=0, column=1, columnspan=2, sticky=S)
@@ -44,7 +43,7 @@ class GUI(Frame):
         # Ball Radius - Label + Scale
         self.radius_desc = Label(self, text="Set Next Ball Radius:").grid(row=5, column=1)
         self.radius = Scale(self, from_=1, to_=50)
-        self.radius.set(25)  # Default radius on start
+        self.radius.set(20)
         self.radius.grid(row=5, column=2)
 
         # Set Gravity - Label + Radio Buttons
@@ -52,7 +51,7 @@ class GUI(Frame):
         self.gravityVar = IntVar()
         self.gOn = Radiobutton(self, text="On", variable=self.gravityVar, value=self.G, command=self.switchGravity).grid(row=7, column=1, sticky=N)
         self.gOff = Radiobutton(self, text="Off", variable=self.gravityVar, value=0, command=self.switchGravity).grid(row=7, column=2, sticky=N)
-        self.gravityVar.set(self.G)
+        self.gravityVar.set(0)
 
         # Remove Last Ball - Button
         self.remove_last = Button(self, text="Remove Last Ball Created", command=self.removeBall)
@@ -66,19 +65,16 @@ class GUI(Frame):
         self.count = Label(self, textvariable=self.countVar, bg="WHITE").grid(row=0, column=0)
 
     def clearCanvas(self):
-        #print("Clearing screen...")
         for ball in self.ballStack:
             ball.deleteBall()
         self.ballStack = deque([])
         self.updateBallCount()
-        #print("Cleared!")
 
     def createBall(self, event):
-        if self.radius.get() < event.x < self.CWIDTH - self.radius.get() and self.radius.get() < event.y < self.CHEIGHT - self.radius.get():
-            self.ballStack.append(ball(self.sim, event, self.radius.get(), self.DT, self.gravityVar.get(), self.colorVar.get(), self.UPDATETIME))
-            if len(self.ballStack) > self.BALLLIMIT:
-                self.ballStack.popleft().deleteBall()
-            self.updateBallCount()
+        self.ballStack.append(ball(self.canvas, event, self.radius.get(), self.DT, self.gravityVar.get(), self.colorVar.get(), self.WIDTH, self.HEIGHT))
+        if len(self.ballStack) > self.BALLLIMIT:
+            self.ballStack.popleft().deleteBall()
+        self.updateBallCount()
 
     def removeBall(self):
         if len(self.ballStack) == 0:
@@ -94,59 +90,68 @@ class GUI(Frame):
     def updateBallCount(self):
         self.countVar.set("Ball Count: %i\n[Limit %i]" % (len(self.ballStack), self.BALLLIMIT))
 
+    def moveBalls(self):
+        for i in range(len(self.ballStack)):
+            self.ballStack[i].animation()
+            self.ballStack[i].update()
+        for i in range(len(self.ballStack)):
+            for j in range(i):
+                self.ballStack[i].checkCollision(self.ballStack[j])
+        self.canvas.after(10, self.moveBalls)
+
 class ball():
-    def __init__(self, canvas, event, r, dt, g, color, updateTime):
+    def __init__(self, canvas, event, r, dt, g, color, width, height):
+        self.canvas = canvas
         self.x = event.x
         self.y = event.y
-        self.canvas = canvas
-        if randint(0, 1) == 0:
-            self.speedX = 5
-        else:
-            self.speedX = -5
-        if randint(0, 1) == 0:
-            self.speedY = -5
-        else:
-            self.speedY = 5
-        self.floor = 1000
+        self.r = r
+        self.dt = dt
+        self.g = g
+        self.x_velocity = 5
+        self.y_velocity = 5
+        self.mass = r
+
+        # Boundaries
+        self.floor = height
         self.ceiling = 0
         self.lwall = 0
-        self.rwall = 1300
-        self.dt = dt
-        self.r = r
-        self.g = g
-        self.updateTime = updateTime
+        self.rwall = width
 
-        #print("Ball's position:", event.x, event.y)
         self.ballDrawing = canvas.create_oval(self.x-r, self.y-r, self.x+r, self.y+r, outline=color, fill=color)
-        self.animation(self.dt)
-        #print("Ball Placed:", self.ballDrawing)
 
-    def animation(self, dt):
-        self.dt = dt
-
+    def animation(self):
         # y-axis movement
-        if self.ceiling + self.r < self.y < self.floor - self.r:
-            self.speedY += self.g * self.dt  # vf = vi + at
+        if self.floor - self.r < self.y or self.y < self.ceiling + self.r:
+            self.y_velocity = -self.y_velocity
         else:
-            self.speedY = -self.speedY
-        self.y += self.speedY  # Update coordinates
-        #print("y: %f,  SpeedY: %f,  dt: %f" % (self.y, self.speedY, self.dt))
+            self.y_velocity += self.g * self.dt
+        self.y += self.y_velocity
 
         # x-axis movement
-        if self.lwall + self.r < self.x < self.rwall - self.r:
-            pass
-        else:
-            self.speedX = -self.speedX
-        self.x += self.speedX
-        self.canvas.move(self.ballDrawing, self.speedX, self.speedY)
-        self.canvas.after(int(self.dt*self.updateTime), self.animation, self.dt)
+        if self.rwall - self.r < self.x or self.x < self.lwall + self.r:
+            self.x_velocity = -self.x_velocity
+        self.x += self.x_velocity
+
+    def checkCollision(self, ball2):
+        distance = math.sqrt(math.pow(self.x - ball2.x, 2) + math.pow(self.y - ball2.y, 2))
+        if distance < self.r + ball2.r:
+            tempx1 = (self.x_velocity * (self.mass - ball2.mass) + (2 * ball2.mass * ball2.x_velocity)) / (self.mass + ball2.mass)
+            tempy1 = (self.y_velocity * (self.mass - ball2.mass) + (2 * ball2.mass * ball2.y_velocity)) / (self.mass + ball2.mass)
+            tempx2 = (ball2.x_velocity * (ball2.mass - self.mass) + (2 * self.mass * self.x_velocity)) / (self.mass + ball2.mass)
+            tempy2 = (ball2.y_velocity * (ball2.mass - self.mass) + (2 * self.mass * self.y_velocity)) / (self.mass + ball2.mass)
+            self.x_velocity = tempx1
+            self.y_velocity = tempy1
+            ball2.x_velocity = tempx2
+            ball2.y_velocity = tempy2
+
+    def update(self):
+        self.canvas.move(self.ballDrawing, self.x_velocity, self.y_velocity)
 
     def toggleGravity(self, gravValue):
         self.g = gravValue
 
     def deleteBall(self):
         self.canvas.delete(self.ballDrawing)
-        #print("Deleted ball", self.ballDrawing)
 
 root = Tk()
 root.title("Ball Simulator")
